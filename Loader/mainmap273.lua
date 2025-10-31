@@ -1,12 +1,15 @@
--- 🟦 LEX HOST Replay Script (Full Working Version)
+-- 🔮 LEX HOST Replay System by ChatGPT (Full Ready-to-Use)
+-- UI Neon Style + Replay Route Loader
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local hrp
 
+-- 🌐 Rute link (ubah link di sini ke rute kamu)
 local ROUTE_LINKS = {
-    "https://raw.githubusercontent.com/WataXScAja/WataXScIni/refs/heads/main/140.lua",
+    "https://raw.githubusercontent.com/putraborz/WataXScIni/refs/heads/main/140.lua",
 }
 
 local routes = {}
@@ -16,7 +19,7 @@ local frameTime = 1/30
 local playbackRate = 1
 local isReplayRunning = false
 
--- Ambil data route
+-- 🧩 Ambil semua route
 for i, link in ipairs(ROUTE_LINKS) do
     if link ~= "" then
         local ok, data = pcall(function()
@@ -27,12 +30,9 @@ for i, link in ipairs(ROUTE_LINKS) do
         end
     end
 end
-if #routes == 0 then
-    warn("Tidak ada route valid ditemukan.")
-    return
-end
+if #routes == 0 then warn("Tidak ada route valid ditemukan.") return end
 
--- Refresh HRP
+-- ⚙️ HRP & karakter setup
 local function refreshHRP(char)
     if not char then char = player.Character or player.CharacterAdded:Wait() end
     hrp = char:WaitForChild("HumanoidRootPart")
@@ -40,16 +40,12 @@ end
 player.CharacterAdded:Connect(refreshHRP)
 if player.Character then refreshHRP(player.Character) end
 
--- Setup Movement
-local function stopMovement()
-    isMoving = false
-end
+local function stopMovement() isMoving = false end
+local function startMovement() isMoving = true end
 
 local function setupMovement(char)
     task.spawn(function()
-        if not char then
-            char = player.Character or player.CharacterAdded:Wait()
-        end
+        if not char then char = player.Character or player.CharacterAdded:Wait() end
         local humanoid = char:WaitForChild("Humanoid", 5)
         local root = char:WaitForChild("HumanoidRootPart", 5)
         if not humanoid or not root then return end
@@ -61,7 +57,7 @@ local function setupMovement(char)
             isRunning = false
             if toggleBtn and toggleBtn.Parent then
                 toggleBtn.Text = "▶ Start"
-                toggleBtn.BackgroundColor3 = Color3.fromRGB(0,180,120)
+                toggleBtn.BackgroundColor3 = Color3.fromRGB(70,200,120)
             end
         end)
 
@@ -79,10 +75,11 @@ local function setupMovement(char)
                     return
                 end
             end
-            if not humanoid or humanoid.Health <= 0 then return end
 
+            if not humanoid or humanoid.Health <= 0 then return end
             local direction = root.Position - lastPos
             local dist = direction.Magnitude
+
             if dist > 0.01 then
                 humanoid:Move(direction.Unit * math.clamp(dist * 5, 0, 1), false)
             else
@@ -99,39 +96,26 @@ local function setupMovement(char)
         end)
     end)
 end
+player.CharacterAdded:Connect(setupMovement)
+if player.Character then setupMovement(player.Character) end
 
-player.CharacterAdded:Connect(function(char)
-    refreshHRP(char)
-    setupMovement(char)
-end)
-if player.Character then
-    refreshHRP(player.Character)
-    setupMovement(player.Character)
-end
-
--- Start/Stop Movement
-local function startMovement() isMoving = true end
-
+-- 🧭 Penyesuaian tinggi & posisi
 local DEFAULT_HEIGHT = 2.9
 local function getCurrentHeight()
     local char = player.Character or player.CharacterAdded:Wait()
     local humanoid = char:WaitForChild("Humanoid")
     return humanoid.HipHeight + (char:FindFirstChild("Head") and char.Head.Size.Y or 2)
 end
-
 local function adjustRoute(frames)
     local adjusted = {}
     local offsetY = getCurrentHeight() - DEFAULT_HEIGHT
     for _, cf in ipairs(frames) do
         local pos, rot = cf.Position, cf - cf.Position
-        table.insert(adjusted, CFrame.new(Vector3.new(pos.X,pos.Y+offsetY,pos.Z)) * rot)
+        table.insert(adjusted, CFrame.new(Vector3.new(pos.X, pos.Y + offsetY, pos.Z)) * rot)
     end
     return adjusted
 end
-
-for i, data in ipairs(routes) do
-    data[2] = adjustRoute(data[2])
-end
+for i, data in ipairs(routes) do data[2] = adjustRoute(data[2]) end
 
 local function getNearestRoute()
     local nearestIdx, dist = 1, math.huge
@@ -146,7 +130,6 @@ local function getNearestRoute()
     end
     return nearestIdx
 end
-
 local function getNearestFrameIndex(frames)
     local startIdx, dist = 1, math.huge
     if hrp then
@@ -156,24 +139,22 @@ local function getNearestFrameIndex(frames)
             if d < dist then dist = d startIdx = i end
         end
     end
-    if startIdx >= #frames then startIdx = math.max(1,#frames-1) end
+    if startIdx >= #frames then startIdx = math.max(1, #frames - 1) end
     return startIdx
 end
-
-local function lerpCF(fromCF,toCF)
+local function lerpCF(fromCF, toCF)
     local duration = frameTime / math.max(0.05, playbackRate)
     local t = 0
     while t < duration do
         if not isReplayRunning then break end
         local dt = task.wait()
         t += dt
-        local alpha = math.min(t/duration, 1)
+        local alpha = math.min(t / duration, 1)
         if hrp and hrp.Parent and hrp:IsDescendantOf(workspace) then
             hrp.CFrame = fromCF:Lerp(toCF, alpha)
         end
     end
 end
-
 local function runRoute()
     if #routes == 0 then return end
     if not hrp then refreshHRP() end
@@ -185,88 +166,84 @@ local function runRoute()
     local startIdx = getNearestFrameIndex(frames)
     for i = startIdx, #frames - 1 do
         if not isReplayRunning then break end
-        lerpCF(frames[i], frames[i+1])
+        lerpCF(frames[i], frames[i + 1])
     end
     isReplayRunning = false
     stopMovement()
 end
-
 local function stopRoute()
     isReplayRunning = false
     stopMovement()
 end
 
--- 🧊 UI SECTION (LEX HOST)
+-- 🟣 UI Neon LEX HOST
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "LEXHOST_UI"
+screenGui.Name = "LEXReplayUI"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,220,0,130)
-frame.Position = UDim2.new(0.05,0,0.75,0)
-frame.BackgroundColor3 = Color3.fromRGB(25,40,60)
+frame.Size = UDim2.new(0, 220, 0, 130)
+frame.Position = UDim2.new(0.05, 0, 0.75, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 20, 40)
 frame.BackgroundTransparency = 0.2
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,16)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
 
 local glow = Instance.new("UIStroke")
 glow.Parent = frame
-glow.Color = Color3.fromRGB(0,200,255)
-glow.Thickness = 2
-glow.Transparency = 0.4
+glow.Color = Color3.fromRGB(150, 100, 255)
+glow.Thickness = 3
+glow.Transparency = 0.3
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(0.75,0,0,28)
-title.Position = UDim2.new(0.05,0,0,4)
-title.Text = "LEX HOST"
+title.Size = UDim2.new(0.75, 0, 0, 28)
+title.Position = UDim2.new(0.05, 0, 0, 4)
+title.Text = "⚡ LEX HOST ⚡"
 title.Font = Enum.Font.GothamBold
 title.TextScaled = true
-title.BackgroundTransparency = 0.3
-title.BackgroundColor3 = Color3.fromRGB(0,80,120)
-Instance.new("UICorner", title).CornerRadius = UDim.new(0,12)
+title.BackgroundTransparency = 0.2
+title.BackgroundColor3 = Color3.fromRGB(60, 40, 100)
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
 
 local hue = 0
 RunService.RenderStepped:Connect(function()
-    hue = (hue + 0.5) % 360
-    title.TextColor3 = Color3.fromHSV(hue/360,0.8,1)
+    hue = (hue + 1) % 360
+    title.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
 end)
 
+local titleGlow = Instance.new("UIStroke")
+titleGlow.Parent = title
+titleGlow.Color = Color3.fromRGB(255, 255, 255)
+titleGlow.Thickness = 2
+titleGlow.Transparency = 0.4
+
 local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0,28,0,28)
-closeBtn.Position = UDim2.new(0.78,0,0,4)
+closeBtn.Size = UDim2.new(0, 28, 0, 28)
+closeBtn.Position = UDim2.new(0.78, 0, 0, 4)
 closeBtn.Text = "✖"
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
-closeBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
-closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,10)
-
+closeBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 10)
 local closeGlow = Instance.new("UIStroke")
 closeGlow.Parent = closeBtn
-closeGlow.Color = Color3.fromRGB(255,60,100)
+closeGlow.Color = Color3.fromRGB(255, 50, 100)
 closeGlow.Thickness = 2
 closeGlow.Transparency = 0.6
-closeBtn.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
+closeBtn.MouseButton1Click:Connect(function() screenGui:Destroy() end)
 
 local toggleBtn = Instance.new("TextButton", frame)
-toggleBtn.Size = UDim2.new(0.8,0,0.25,0)
-toggleBtn.Position = UDim2.new(0.1,0,0.35,0)
+toggleBtn.Size = UDim2.new(0.8, 0, 0.25, 0)
+toggleBtn.Position = UDim2.new(0.1, 0, 0.35, 0)
 toggleBtn.Text = "▶ Start"
 toggleBtn.TextScaled = true
 toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.BackgroundColor3 = Color3.fromRGB(0,180,120)
-toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,14)
-
-local toggleGlow = Instance.new("UIStroke")
-toggleGlow.Parent = toggleBtn
-toggleGlow.Color = Color3.fromRGB(0,255,255)
-toggleGlow.Thickness = 2
-toggleGlow.Transparency = 0.5
+toggleBtn.BackgroundColor3 = Color3.fromRGB(70, 200, 120)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 14)
 
 local isRunning = false
 toggleBtn.MouseButton1Click:Connect(function()
@@ -282,40 +259,38 @@ toggleBtn.MouseButton1Click:Connect(function()
 end)
 
 local speedLabel = Instance.new("TextLabel", frame)
-speedLabel.Size = UDim2.new(0.35,0,0.2,0)
-speedLabel.Position = UDim2.new(0.325,0,0.7,0)
+speedLabel.Size = UDim2.new(0.35, 0, 0.2, 0)
+speedLabel.Position = UDim2.new(0.325, 0, 0.7, 0)
 speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.fromRGB(0,255,255)
+speedLabel.TextColor3 = Color3.fromRGB(180, 180, 255)
 speedLabel.Font = Enum.Font.GothamBold
 speedLabel.TextScaled = true
 speedLabel.Text = playbackRate.."x"
 
 local speedDown = Instance.new("TextButton", frame)
-speedDown.Size = UDim2.new(0.2,0,0.2,0)
-speedDown.Position = UDim2.new(0.05,0,0.7,0)
+speedDown.Size = UDim2.new(0.2, 0, 0.2, 0)
+speedDown.Position = UDim2.new(0.05, 0, 0.7, 0)
 speedDown.Text = "-"
 speedDown.Font = Enum.Font.GothamBold
 speedDown.TextScaled = true
-speedDown.BackgroundColor3 = Color3.fromRGB(80,80,120)
-speedDown.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", speedDown).CornerRadius = UDim.new(0,6)
-
+speedDown.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+speedDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", speedDown).CornerRadius = UDim.new(0, 6)
 speedDown.MouseButton1Click:Connect(function()
     playbackRate = math.max(0.25, playbackRate - 0.25)
     speedLabel.Text = playbackRate.."x"
 end)
 
 local speedUp = Instance.new("TextButton", frame)
-speedUp.Size = UDim2.new(0.2,0,0.2,0)
-speedUp.Position = UDim2.new(0.75,0,0.7,0)
+speedUp.Size = UDim2.new(0.2, 0, 0.2, 0)
+speedUp.Position = UDim2.new(0.75, 0, 0.7, 0)
 speedUp.Text = "+"
 speedUp.Font = Enum.Font.GothamBold
 speedUp.TextScaled = true
-speedUp.BackgroundColor3 = Color3.fromRGB(80,100,160)
-speedUp.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", speedUp).CornerRadius = UDim.new(0,6)
-
+speedUp.BackgroundColor3 = Color3.fromRGB(80, 80, 130)
+speedUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", speedUp).CornerRadius = UDim.new(0, 6)
 speedUp.MouseButton1Click:Connect(function()
-    playbackRate = math.min(3, playbackRate + 0.25)
+    playbackRate = math.min(6, playbackRate + 0.25)
     speedLabel.Text = playbackRate.."x"
 end)
